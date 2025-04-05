@@ -3,6 +3,29 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id    Int     @id
+  order Order[]
+}
+
+model Order {
+  id     Int    @id @default(autoincrement())
+  dish   Dish[]
+  User   User?  @relation(fields: [userId], references: [id])
+  userId Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Dish {
+  id       String @id
+  quantity Int
+  price    Int
+  Order    Order? @relation(fields: [orderId], references: [id])
+  orderId  Int?
 }
