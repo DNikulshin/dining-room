@@ -1,36 +1,23 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import * as XLSX from 'xlsx';
-import { saveAs } from 'file-saver';
-const EXCEL_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8';
-//const EXCEL_EXTENSION = '.xlsx';
+import { handleExportToExcel } from '@/shared/utils/exportToExcel';
+import { IActionKey, IMenu, IResultItems } from '@/types/types';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
-interface IMenu {
-  id: number;
-  name: string;
-  price: number;
-  key: string;
-}
-
-interface IEscape {
-  name: string;
-  key: string;
-}
-interface IClearAll {
-  name: string;
-  key: string;
-}
-
-const escape: IEscape = {
+const escape: IActionKey = {
   name: 'Сброс заказа',
   key: 'Escape',
 };
-const clearAll: IClearAll = {
+
+const clearAll: IActionKey = {
   name: 'Сброс результатов',
   key: 'f5',
 };
 
+const exportToExcel: IActionKey = {
+  name: 'Экспорт в Excel',
+  key: 'f6',
+};
 
 const menu: IMenu[] = [
   { id: 1, name: 'Первое', price: 25, key: 'f1' },
@@ -46,9 +33,7 @@ export default function Home() {
   const [pressedKey, setPressedKey] = useState<string | null>(null);
   const [isOrderCompleted, setIsOrderCompleted] = useState<boolean>(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const [resultItems, setResultItems] = useState<{
-    total: number; userId: string; order: typeof selectedItems, createdAt: string;
-  }[]>(() => {
+  const [resultItems, setResultItems] = useState<IResultItems>(() => {
     if (typeof window !== 'undefined') {
       const storedResults = localStorage.getItem('resultItems');
       return storedResults ? JSON.parse(storedResults) : [];
@@ -71,31 +56,36 @@ export default function Home() {
         total,
         createdAt: new Date().toLocaleString(),
       };
-      setResultItems(prev => {
-        const updatedResults = [...prev, newOrder];
-        localStorage.setItem('resultItems', JSON.stringify(updatedResults));
-        return updatedResults;
-      });
+      const updatedResults = [...resultItems, newOrder];
+      localStorage.setItem('resultItems', JSON.stringify(updatedResults));
+      setResultItems(updatedResults);
     }
     resetOrder();
-  }, [userId, selectedItems, total, resetOrder]);
+  }, [userId, selectedItems, total, resetOrder, resultItems]);
 
   const clearLocalStorage = useCallback(() => {
     localStorage.removeItem('resultItems');
     setResultItems([]);
   }, []);
 
-
   const handleKeyPress = useCallback((event: KeyboardEvent) => {
     const key = event.key.toUpperCase();
     const isShiftPressed = event.shiftKey;
 
+    if (key === exportToExcel.key.toUpperCase()) {
+      event.preventDefault();
+      if (key === exportToExcel.key.toUpperCase() && isShiftPressed) {
+        handleExportToExcel(resultItems);
+        setTimeout(() => setPressedKey(null), 200);
+        return;
+      }
+    }
 
     if (key === clearAll.key.toUpperCase()) {
       event.preventDefault();
-      if (isShiftPressed && key === clearAll.key.toUpperCase()) {
-        event.preventDefault();
-        clearLocalStorage()
+      if (key === clearAll.key.toUpperCase() && isShiftPressed) {
+        clearLocalStorage();
+        setTimeout(() => setPressedKey(null), 200);
         return;
       }
     }
@@ -110,8 +100,6 @@ export default function Home() {
 
     if (key === 'ENTER') {
       event.preventDefault();
-      console.log(key);
-
       if (isOrderCompleted) {
         handleConfirmOrder();
       }
@@ -129,12 +117,11 @@ export default function Home() {
           id: menuItem.id,
           quantity: (prevItems[menuItem.name]?.quantity || 0) + 1,
           price: menuItem.price
-
         }
       }));
       setTimeout(() => setPressedKey(null), 200);
     }
-  }, [isOrderCompleted, resetOrder, handleConfirmOrder, clearLocalStorage]);
+  }, [isOrderCompleted, resetOrder, handleConfirmOrder, clearLocalStorage, resultItems]);
 
   const handleUserIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -144,30 +131,14 @@ export default function Home() {
     );
   };
 
-  const handleExportToExcel = useCallback(() => {
-    const formattedResultItems = resultItems.map(item => {
-      return {
-        UserID: item.userId,
-        Total: item.total,
-        Order: Object.entries(item.order).map(([key, { quantity, price }]) => {
-          return `${key} (x${quantity}) - ${price * quantity}р`;
-        }).join(', '),
-        CreatedAt: item.createdAt
-      };
-    });
+  const updateOrderCompletionStatus = () => {
+    setIsOrderCompleted(total > 0);
+    if (total > 0 && inputRef.current) {
+      inputRef.current.focus();
+    }
+  };
 
-    const worksheet = XLSX.utils.json_to_sheet(formattedResultItems);
-    const workbook = XLSX.utils.book_new();
-
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Orders");
-
-    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-    const data = new Blob([excelBuffer], { type: EXCEL_TYPE });
-
-    saveAs(data, 'orders.xlsx');
-  }, [resultItems]);
-
-
+  useEffect(updateOrderCompletionStatus, [total]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyPress);
@@ -176,24 +147,9 @@ export default function Home() {
     };
   }, [handleKeyPress]);
 
-  useEffect(() => {
-    if (total > 0) {
-      setIsOrderCompleted(true);
-    }
-  }, [total]);
-
-  useEffect(() => {
-    if (isOrderCompleted && inputRef.current) {
-      inputRef.current.focus();
-    }
-  }, [isOrderCompleted]);
-
-  useEffect(() => {
-    localStorage.setItem('resultItems', JSON.stringify(resultItems));
-  }, [resultItems]);
-
   return (
     <div className="flex flex-col h-screen items-center px-2 py-2 container mx-auto">
+      <button className="bg-yellow-500 px-4 py-2 shadow-md shadow-slate-400 cursor-pointer rounded absolute left-10 top-4">{exportToExcel.name}: (shift+{exportToExcel.key.toUpperCase()})</button>
       <div className='flex gap-4 items-center justify-center py-2'>
         <div className='text-2xl font-bold'>Заказов: (<span className='text-red-500 '>{resultItems.length}</span>)
         </div>
@@ -201,7 +157,7 @@ export default function Home() {
       </div>
 
       <div className="flex flex-wrap gap-10 items-center justify-center py-12 px-4 shadow-md shadow-slate-500 w-full relative">
-        <button onClick={handleExportToExcel} className="bg-yellow-500 px-4 py-4 shadow-md shadow-slate-400 cursor-pointer rounded absolute left-2 top-2">Экспорт в Excel</button>
+
         <input
           ref={inputRef}
           className={`absolute top-2 right-8 z-50 shadow-md shadow-slate-500 px-4 py-2 outline-none disabled:bg-gray-300/85 ${userId ? '' : 'border border-red-400'}`}
