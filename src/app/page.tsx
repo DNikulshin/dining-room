@@ -151,6 +151,7 @@ export default function Home() {
     <div className="flex flex-col h-screen items-center px-2 py-2 container mx-auto">
       <button className="bg-yellow-500 px-4 py-2 shadow-md shadow-slate-400 cursor-pointer rounded absolute left-10 top-4">{exportToExcel.name}: (shift+{exportToExcel.key.toUpperCase()})</button>
       <div className='flex gap-4 items-center justify-center py-2'>
+      TEST
         <div className='text-2xl font-bold'>Заказов: (<span className='text-red-500 '>{resultItems.length}</span>)
         </div>
         <button className="bg-slate-400 px-2 py-2 shadow-md shadow-slate-400 cursor-pointer rounded">{clearAll.name}: (shift+{clearAll.key.toUpperCase()})</button>
