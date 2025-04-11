@@ -21,5 +21,5 @@ export const handleExportToExcel = (resultItems: IResultItem[]) => {
 
   const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
   const data = new Blob([excelBuffer], { type: EXCEL_TYPE });
-  saveAs(data, 'orders.xlsx');
+  saveAs(data, `orders_${new Date().toLocaleString().replace(':', '_').replace(',', '_')}.xlsx`);
 };

@@ -132,9 +132,12 @@ export default function Home() {
   };
 
   const updateOrderCompletionStatus = () => {
-    setIsOrderCompleted(total > 0);
-    if (total > 0 && inputRef.current) {
-      inputRef.current.focus();
+    const isCompleted = total > 0;
+    setIsOrderCompleted(isCompleted);
+    if (isCompleted && inputRef.current) {
+      setTimeout(() => {
+        inputRef?.current?.focus();
+      }, 0);
     }
   };
 
@@ -146,6 +149,7 @@ export default function Home() {
       window.removeEventListener('keydown', handleKeyPress);
     };
   }, [handleKeyPress]);
+
 
   return (
     <div className="flex flex-col h-screen items-center px-2 py-2 container mx-auto">
