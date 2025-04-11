@@ -33,14 +33,8 @@ export default function Home() {
   const [pressedKey, setPressedKey] = useState<string | null>(null);
   const [isOrderCompleted, setIsOrderCompleted] = useState<boolean>(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const [resultItems, setResultItems] = useState<IResultItems>(() => {
-    if (typeof window !== 'undefined') {
-      const storedResults = localStorage.getItem('resultItems');
-      return storedResults ? JSON.parse(storedResults) : [];
-    }
-    return [];
-  });
-
+  const [resultItems, setResultItems] = useState<IResultItems>([]);
+  
   const resetOrder = useCallback(() => {
     setTotal(0);
     setSelectedItems({});
@@ -149,6 +143,13 @@ export default function Home() {
       window.removeEventListener('keydown', handleKeyPress);
     };
   }, [handleKeyPress]);
+
+  useEffect(() => {
+    const storedResults = localStorage.getItem('resultItems');
+    if (storedResults) {
+      setResultItems(JSON.parse(storedResults));
+    }
+  }, []);
 
 
   return (
