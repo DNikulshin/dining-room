@@ -2,6 +2,9 @@
   channel = "stable-24.05";
   packages = [
     pkgs.nodejs_20
+    pkgs.docker-compose
+    pkgs.openssl
+    pkgs.openssl_3
   ];
   idx.extensions = [
     
@@ -23,4 +26,5 @@
       };
     };
   };
+   services.docker.enable = true;
 }

@@ -3,6 +3,7 @@
 import { handleExportToExcel } from '@/shared/utils/exportToExcel';
 import { IActionKey, IMenu, IResultItems } from '@/types/types';
 import { useState, useEffect, useRef, useCallback } from 'react';
+// import { RxReset } from "react-icons/rx";
 
 const escape: IActionKey = {
   name: 'Сброс заказа',
@@ -19,12 +20,12 @@ const exportToExcel: IActionKey = {
   key: 'f6',
 };
 
-const menu: IMenu[] = [
-  { id: 1, name: 'Первое', price: 25, key: 'f1' },
-  { id: 2, name: 'Второе', price: 75, key: 'f2' },
-  { id: 3, name: 'Салат/Десерт', price: 35, key: 'f3' },
-  { id: 4, name: 'Комплекс', price: 150, key: 'f4' },
-];
+// const menu: IMenu[] = [
+//   { id: 1, name: 'Первое', price: 25, key: 'f1' },
+//   { id: 2, name: 'Второе', price: 75, key: 'f2' },
+//   { id: 3, name: 'Салат/Десерт', price: 35, key: 'f3' },
+//   { id: 4, name: 'Комплекс', price: 150, key: 'f4' },
+// ];
 
 export default function Home() {
   const [userId, setUserId] = useState<string>('');
@@ -34,7 +35,10 @@ export default function Home() {
   const [isOrderCompleted, setIsOrderCompleted] = useState<boolean>(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const [resultItems, setResultItems] = useState<IResultItems>([]);
-  
+  const [menu, setMenu] = useState<IMenu[]>([]);
+  const [editingItem, setEditingItem] = useState<{ id: number; name: string; price: number } | null>(null);
+  const [isEdit, setIsEdit] = useState(false)
+
   const resetOrder = useCallback(() => {
     setTotal(0);
     setSelectedItems({});
@@ -115,7 +119,7 @@ export default function Home() {
       }));
       setTimeout(() => setPressedKey(null), 200);
     }
-  }, [isOrderCompleted, resetOrder, handleConfirmOrder, clearLocalStorage, resultItems]);
+  }, [isOrderCompleted, resetOrder, handleConfirmOrder, clearLocalStorage, resultItems, menu]);
 
   const handleUserIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -135,6 +139,35 @@ export default function Home() {
     }
   };
 
+  const saveMenu = useCallback(() => {
+    if (editingItem) {
+      const updatedMenu = menu.map(item =>
+        item.id === editingItem.id
+          ? { ...item, name: editingItem.name, price: editingItem.price }
+          : item
+      );
+      setMenu(updatedMenu);
+      localStorage.setItem('menu', JSON.stringify(updatedMenu));
+      setEditingItem(null);
+    }
+  }, [editingItem, menu]);
+
+  useEffect(() => {
+    const storedMenu = localStorage.getItem('menu');
+    if (storedMenu) {
+      setMenu(JSON.parse(storedMenu));
+    } else {
+      const defaultMenu: IMenu[] = [
+        { id: 1, name: 'Первое', price: 25, key: 'f1' },
+        { id: 2, name: 'Второе', price: 75, key: 'f2' },
+        { id: 3, name: 'Салат/Десерт', price: 35, key: 'f3' },
+        { id: 4, name: 'Комплекс', price: 150, key: 'f4' },
+      ];
+      setMenu(defaultMenu);
+      localStorage.setItem('menu', JSON.stringify(defaultMenu));
+    }
+  }, []);
+
   useEffect(updateOrderCompletionStatus, [total]);
 
   useEffect(() => {
@@ -151,9 +184,36 @@ export default function Home() {
     }
   }, []);
 
-
   return (
     <div className="flex flex-col h-screen items-center px-2 py-2 container mx-auto">
+      <button
+        onClick={() => setIsEdit(!isEdit)}
+        className="bg-red-400 px-4 py-2 shadow-md shadow-slate-400 cursor-pointer rounded absolute right-10 top-4"
+      >
+        {isEdit ? 'Закрыть редактор' : 'Редактор Меню'}
+      </button>
+      {isEdit && <div className="px-2 py-2 mt-8">
+        <h2 className='text-xl py-2'>Редактировать меню:</h2>
+        {menu.map(item => (
+          <div key={item.id} className="flex items-center justify-between gap-2">
+            <input
+              type="text"
+              value={editingItem?.id === item.id ? editingItem.name : item.name}
+              onChange={(e) => setEditingItem({ id: item.id, name: e.target.value, price: item.price })}
+              placeholder="Название"
+              className="border border-gray-300 rounded px-2 py-1"
+            />
+            <input
+              type="number"
+              value={editingItem?.id === item.id ? editingItem.price : item.price}
+              onChange={(e) => setEditingItem({ id: item.id, name: item.name, price: Number(e.target.value) })}
+              placeholder="Цена"
+              className="border border-gray-300 rounded px-2 py-1 ml-2"
+            />
+            <button onClick={saveMenu} className="bg-blue-500 text-white rounded px-2 py-1 ml-2 mb-2  cursor-pointer">Сохранить</button>
+          </div>
+        ))}
+      </div>}
       <button className="bg-yellow-500 px-4 py-2 shadow-md shadow-slate-400 cursor-pointer rounded absolute left-10 top-4">{exportToExcel.name}: (shift+{exportToExcel.key.toUpperCase()})</button>
       <div className='flex gap-4 items-center justify-center py-2'>
         <div className='text-2xl font-bold'>Заказов: (<span className='text-red-500 '>{resultItems.length}</span>)
